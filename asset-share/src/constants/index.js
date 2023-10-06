@@ -1,0 +1,12 @@
+import fileShareJson from "./FileSharing.json";
+import chatAppJson from "./ChatApp.json";
+import twitterAppJson from "./Twitter.json";
+import nftAppJson from "./DweetNft.json";
+export const FileShareABI = fileShareJson.abi;
+export const ChatAppABI = chatAppJson.abi;
+export const TwitterAppABI = twitterAppJson.abi;
+export const NftAppABI = nftAppJson.abi;
+export const FileShareAddress = "0x7DB71FF5E3862d523ffb3c1Eb3fB438Ae19221B7";
+export const ChatAppAddress = "0x80AF2691E129b7a0ADb5d492DaEe0fa994619C5e";
+export const TwitterAppAddress = "0x72294064cA2A5f2987e718B3eE0758C425C10CA7";
+export const NFTAppAddress = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9";
