@@ -17,7 +17,7 @@ const Navbar = () => {
       <div className="flex flex-row items-center">
         <img className="w-8" src={logo} />
         <h1 className="text-white text-2xl ml-2 font-semibold flex flex-row font-poppins">
-          D<h1 className="font-light">witter</h1>
+          <h1 className="font-light">Secure Sparrow</h1>
         </h1>
       </div>
       <div className="flex items-center gap-2 rounded-xl border border-gray-600 hover:border-gray-400 min-w-[50%] text-gray-100 px-4 py-2">

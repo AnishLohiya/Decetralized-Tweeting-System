@@ -20,6 +20,7 @@ import Sidebar from "./Sidebar";
 import Modal from "react-modal";
 import logo from "../assets/logo.png";
 import { Link } from "react-router-dom";
+import Comment from "./Comment";
 const generator = new AvatarGenerator();
 
 const ScrollButton = () => {
@@ -56,9 +57,15 @@ const ScrollButton = () => {
 const Card = ({ tweet, connectWithTwitterContract }) => {
   const [likes, setLikes] = useState(null);
   const [liked, setLiked] = useState(false);
+  const [showCommentBox, setShowCommentBox] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const [comments, setComments] = useState([]);
+  const _id = tweet?.uid._hex[3] - 1;
+  // const _id = parseInt(tweet.uid._hex);
   const reportATweet = async () => {
     try {
       const contract = await connectWithTwitterContract();
+
       const response = await contract.checkIfAlreadyReported(
         parseInt(tweet.uid._hex)
       );
@@ -68,6 +75,7 @@ const Card = ({ tweet, connectWithTwitterContract }) => {
         )}/`
       );
       console.log(response);
+
       console.log(res);
     } catch (e) {
       console.log(e);
@@ -83,40 +91,89 @@ const Card = ({ tweet, connectWithTwitterContract }) => {
       });
     }
   };
-  const getLikes = () => {
-    axios
-      .get(
-        "http://a675-2401-4900-5092-7361-7c61-b53c-d8d9-dcd6.ngrok.io/like_tweet/" +
-          parseInt(tweet.uid._hex) +
-          "/"
-      )
-      .then((res) => {
-        console.log(res.data);
-        setLikes(res.data.like_count);
-      });
+  const getLikes = async () => {
+    // axios
+    //   .get(
+    //     "http://a675-2401-4900-5092-7361-7c61-b53c-d8d9-dcd6.ngrok.io/like_tweet/" +
+    //       parseInt(tweet.uid._hex) +
+    //       "/"
+    //   )
+    //   .then((res) => {
+    //     console.log(res.data);
+    //     setLikes(res.data.like_count);
+    //   });
+
+    try {
+      const contract = await connectWithTwitterContract();
+      const response = await contract.getLikesOfPost(_id);
+      await setLiked(parseInt(response._hex, 16));
+      await setLikes(parseInt(response._hex, 16));
+    } catch (error) {
+      console.log(error);
+    }
   };
-  const likeATweet = () => {
-    axios
-      .post(
-        "http://a675-2401-4900-5092-7361-7c61-b53c-d8d9-dcd6.ngrok.io/like_tweet/" +
-          parseInt(tweet.uid._hex) +
-          "/"
-      )
-      .then((res) => {
-        console.log(res.data);
-        getLikes();
-        setLiked(!liked);
-      });
+
+  const likeATweet = async () => {
+    console.log("tweet liked", _id);
+    // axios
+    //   .post(
+    //     "http://a675-2401-4900-5092-7361-7c61-b53c-d8d9-dcd6.ngrok.io/like_tweet/" +
+    //       parseInt(tweet.uid._hex) +
+    //       "/"
+    //   )
+    //   .then((res) => {
+    //     console.log(res.data);
+    //     getLikes();
+    //     setLiked(!liked);
+    //   });
+    try {
+      const contract = await connectWithTwitterContract();
+      const response = await contract.likeTheTweet(_id);
+    } catch (error) {
+      console.log(error);
+    }
   };
+
+  const handleComment = async (e) => {
+    e.preventDefault();
+    console.log("showCommentBox", commentText);
+    console.log("comment for", _id);
+    try {
+      const contract = await connectWithTwitterContract();
+      const response = await contract.addComment(_id, commentText);
+      await setCommentText("");
+    } catch (error) {
+      console.log("comment error", error);
+    } finally {
+      await setShowCommentBox(false);
+    }
+  };
+
+  const getPostComments = async (_id) => {
+    try {
+      const contract = await connectWithTwitterContract();
+      const response = await contract.getComment(_id);
+      setComments(response);
+      console.log("comments", comments);
+    } catch (error) {
+      console.log("Comment display error", error);
+    }
+  };
+
   useEffect(() => {
     getLikes();
-  }, [tweet]);
+    getPostComments(_id);
+  }, [tweet, comments, likes]);
   return (
     <div
       className="bg-gray-900 max-w-[50vw] px-8 py-6 rounded-xl flex items-start gap-2 mt-8"
       key={tweet.tweet_msg}
     >
-      <img className="w-12" src={generator.generateRandomAvatar()} />
+      <img
+        className="w-12"
+        src={generator.generateRandomAvatar()}
+        alt="avatar"
+      />
       <div className="w-full">
         <div className="flex justify-between items-center mb-1 w-[100%]">
           <div className="flex items-center gap-2">
@@ -176,12 +233,17 @@ const Card = ({ tweet, connectWithTwitterContract }) => {
           </audio>
         )}
         <div className="flex justify-evenly mt-4">
-          <RiChat1Line className="text-4xl rounded-full p-2 hover:bg-sky-500/25 hover:text-sky-500" />
+          <RiChat1Line
+            onClick={() => {
+              setShowCommentBox(!showCommentBox);
+            }}
+            className="text-4xl rounded-full p-2 hover:bg-sky-500/25 hover:text-sky-500"
+          />
           <RiRepeatLine className="text-4xl rounded-full p-2 hover:bg-green-500/25 hover:text-green-500" />
           <div className="flex items-center gap-1">
             {liked ? (
               <RiHeartFill
-                onClick={() => likeATweet()}
+                onClick={(e) => likeATweet(e)}
                 className="text-4xl rounded-full p-2 hover:bg-red-500/25 text-red-500"
               />
             ) : (
@@ -193,6 +255,42 @@ const Card = ({ tweet, connectWithTwitterContract }) => {
             {likes && <h1 className="text-red-400">{likes}</h1>}
           </div>
           <RiShareForwardBoxFill className="text-4xl rounded-full p-2 hover:bg-sky-500/25 hover:text-sky-500" />
+        </div>
+        <Modal
+          isOpen={showCommentBox}
+          onRequestClose={() => setShowCommentBox(false)}
+          contentLabel="Example Modal"
+          ariaHideApp={false}
+          className="px-8 py-4 w-[40vw] h-[42vh] m-auto mt-[4vh] bg-gray-900 text-gray-100 rounded-xl"
+        >
+          <div className="overflow-y-auto h-full scrollbar-none">
+            <h1 className="text-4xl font-semibold mb-3">Add Comment</h1>
+            <h1 className="text-lg">Comment Description</h1>
+            <textarea
+              className="bg-gray-800 px-4 py-2 rounded-xl mt-2 w-full focus:outline-none text-gray-400 resize-none"
+              rows={5}
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              placeholder="Enter comment..."
+              maxLength={400}
+            />
+            <h1 className="text-xs font-thin text-end">Max Charaters 400</h1>
+            <button
+              className="text-white font-semibold bg-sky-500 rounded-xl px-4 py-2 "
+              onClick={handleComment}
+            >
+              Comment
+            </button>
+          </div>
+        </Modal>
+        <div>
+          {comments.length > 0 && (
+            <div>
+              {comments.map((comment) => (
+                <Comment {...comment} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -250,174 +348,6 @@ const Tweets = () => {
     const url = response.data.data[0].url;
     setImgUrl(url);
     setLoadingAI(false);
-  };
-
-  const tweetKaro1 = async () => {
-    setLoading(true);
-    const responseText = await axios.post(
-      "http://a675-2401-4900-5092-7361-7c61-b53c-d8d9-dcd6.ngrok.io/detect_hate_text/",
-      {
-        text: tweetText,
-      }
-    );
-    console.log(responseText.data);
-    if (!responseText.data.hate) {
-      if (file?.type.startsWith("image/")) {
-        console.log("image");
-        const web3 = new Web3Storage({
-          token:
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweEU5Nzg5OUYyZjQxNEEzMTlmY2VmRTQyZjk2MDVCNGMzMjI1OTE3MUQiLCJpc3MiOiJ3ZWIzLXN0b3JhZ2UiLCJpYXQiOjE2OTY2MDA5MTMxOTIsIm5hbWUiOiJXZWIzUHJvamVjdCJ9.4gVVE4KVI0MxsAPrCO9d_qbqbcS3y50nMK7bm9AGur0",
-        });
-
-        console.log(file);
-        const ext = file.name.split(".").pop();
-        const newFile = new File([file], file.name, { type: file.type });
-        const cid = await web3.put([newFile], {
-          name: file.name,
-        });
-        const url = `https://ipfs.io/ipfs/${cid}/${file.name}`;
-        console.log(url);
-        axios
-          .post(
-            "http://a675-2401-4900-5092-7361-7c61-b53c-d8d9-dcd6.ngrok.io/detect_hate_image/",
-            {
-              url: url,
-            }
-          )
-          .then(async (res) => {
-            if (!res.data.hate) {
-              const contract = await connectWithTwitterContract();
-              const response = await contract.addTweet(url, tweetText, name);
-              console.log(response);
-              setLoading(false);
-            } else {
-              console.log(res.data);
-              toast.error(res.data["Sensitive Image Detected"], {
-                position: "top-right",
-                autoClose: 5000,
-                hideProgressBar: false,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-                progress: undefined,
-                theme: "light",
-              });
-              setLoading(false);
-            }
-          });
-      } else if (file?.type.startsWith("video/")) {
-        console.log("video");
-        var formdata = new FormData();
-        formdata.append("file", file, file.name);
-        formdata.append("filename", file.name);
-        console.log(formdata);
-        axios
-          .post(
-            "http://a675-2401-4900-5092-7361-7c61-b53c-d8d9-dcd6.ngrok.io/detect_hate_video/",
-            formdata
-          )
-          .then(async (res) => {
-            if (!res.data.hate) {
-              const web3 = new Web3Storage({
-                token:
-                  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweEU5Nzg5OUYyZjQxNEEzMTlmY2VmRTQyZjk2MDVCNGMzMjI1OTE3MUQiLCJpc3MiOiJ3ZWIzLXN0b3JhZ2UiLCJpYXQiOjE2OTY2MDA5MTMxOTIsIm5hbWUiOiJXZWIzUHJvamVjdCJ9.4gVVE4KVI0MxsAPrCO9d_qbqbcS3y50nMK7bm9AGur0",
-              });
-              const ext = file.name.split(".").pop();
-              const newFile = new File([file], file.name, { type: file.type });
-              const cid = await web3.put([newFile], {
-                name: file.name,
-              });
-              const url = `https://ipfs.io/ipfs/${cid}/${file.name}`;
-              console.log(url);
-              const contract = await connectWithTwitterContract();
-              const response = await contract.addTweet(url, tweetText, name);
-              console.log(response);
-              setLoading(false);
-            } else {
-              console.log(res.data);
-              toast.error(res.data["Sensitive Image Detected"], {
-                position: "top-right",
-                autoClose: 5000,
-                hideProgressBar: false,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-                progress: undefined,
-                theme: "light",
-              });
-              setLoading(false);
-            }
-          });
-      } else if (file?.type.startsWith("audio/")) {
-        console.log("audio");
-        var formdata = new FormData();
-        formdata.append("file", file, file.name);
-        formdata.append("filename", file.name);
-        console.log(formdata);
-        axios
-          .post(
-            "http://a675-2401-4900-5092-7361-7c61-b53c-d8d9-dcd6.ngrok.io/detect_hate_audio/",
-            formdata
-          )
-          .then(async (res) => {
-            if (!res.data.hate) {
-              const web3 = new Web3Storage({
-                token:
-                  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweEU5Nzg5OUYyZjQxNEEzMTlmY2VmRTQyZjk2MDVCNGMzMjI1OTE3MUQiLCJpc3MiOiJ3ZWIzLXN0b3JhZ2UiLCJpYXQiOjE2OTY2MDA5MTMxOTIsIm5hbWUiOiJXZWIzUHJvamVjdCJ9.4gVVE4KVI0MxsAPrCO9d_qbqbcS3y50nMK7bm9AGur0",
-              });
-              const ext = file.name.split(".").pop();
-              const newFile = new File([file], file.name, { type: file.type });
-              const cid = await web3.put([newFile], {
-                name: file.name,
-              });
-              const url = `https://ipfs.io/ipfs/${cid}/${file.name}`;
-              const contract = await connectWithTwitterContract();
-              const response = await contract.addTweet(url, tweetText, name);
-              console.log(response);
-              setLoading(false);
-            } else {
-              console.log(res.data);
-              toast.error(res.data["Hate Speech Detected"], {
-                position: "top-right",
-                autoClose: 5000,
-                hideProgressBar: false,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-                progress: undefined,
-                theme: "light",
-              });
-              setLoading(false);
-            }
-          });
-      } else if (file) {
-        toast.error("File type not supported", {
-          position: "top-right",
-          autoClose: 5000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "light",
-        });
-        setLoading(false);
-      }
-      setLoading(false);
-    } else {
-      console.log(responseText.data);
-      toast.error("Use appropriate language", {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "light",
-      });
-      setLoading(false);
-    }
   };
 
   const tweetKaro = async () => {
@@ -496,7 +426,7 @@ const Tweets = () => {
       setLoading(false);
     }
   };
-
+  
   const tweetAI = async () => {
     const responseText = await axios.post(
       "http://a675-2401-4900-5092-7361-7c61-b53c-d8d9-dcd6.ngrok.io/detect_hate_text/",
@@ -524,7 +454,7 @@ const Tweets = () => {
   };
 
   useEffect(() => {
-    if(file) console.log(file);
+    console.log(file);
   }, [file]);
 
   return (
@@ -626,7 +556,7 @@ const Tweets = () => {
           <div className="flex flex-row items-center">
             <img className="w-8" src={logo} />
             <h1 className="text-white text-2xl ml-2 font-semibold flex flex-row font-poppins">
-              D<h1 className="font-light">witter</h1>
+            <h1 className="font-light">Secure Sparrow</h1>
             </h1>
           </div>
           <div className="flex flex-col h-[80vh] justify-evenly items-center">
@@ -689,6 +619,7 @@ const Tweets = () => {
                       <img
                         className="w-12"
                         src={generator.generateRandomAvatar()}
+                        alt="avatar"
                       />
                       <h1 className="text-lg font-semibold ml-4">
                         {user.name}
@@ -717,7 +648,7 @@ const Tweets = () => {
               <div className="flex mt-4">
                 <div>
                   <h1 className="text-xs font-thin">Trending</h1>
-                  <h1 className="font-semibold">#SPITHackathon</h1>
+                  <h1 className="font-semibold">#VESIT</h1>
                   <h1 className="text-xs font-thin">1462 tweets</h1>
                 </div>
               </div>
@@ -731,7 +662,7 @@ const Tweets = () => {
               <div className="flex mt-4">
                 <div>
                   <h1 className="text-xs font-thin">Trending</h1>
-                  <h1 className="font-semibold">#EnemiesOfSyntax</h1>
+                  <h1 className="font-semibold">#LG</h1>
                   <h1 className="text-xs font-thin">1531 tweets</h1>
                 </div>
               </div>
