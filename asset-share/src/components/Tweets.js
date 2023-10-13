@@ -556,7 +556,7 @@ const Tweets = () => {
           <div className="flex flex-row items-center">
             <img className="w-8" src={logo} />
             <h1 className="text-white text-2xl ml-2 font-semibold flex flex-row font-poppins">
-            <h1 className="font-light">Secure Sparrow</h1>
+              D<h1 className="font-light">witter</h1>
             </h1>
           </div>
           <div className="flex flex-col h-[80vh] justify-evenly items-center">
